@@ -16,3 +16,4 @@ liblz.a: $(OBJECTS)
 
 clean:
 	rm -f $(TARGET)
+	rm -f *.o

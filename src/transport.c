@@ -8,14 +8,13 @@
 #include <sys/poll.h>
 #include <fnmatch.h>
 #include <stdint.h>
-
+#include <errno.h>
 #include "logging.h"
 #include "transport.h"
 #include "list.h"
 #include "socket.h"
-
 transport_t *
-transport_load (dict_t *options)
+transport_load (dict_t *options, globals_ctx_t *ctx)
 {
 	struct transport *trans = NULL, *return_trans = NULL;
 	char *name = NULL;
@@ -24,7 +23,6 @@ transport_load (dict_t *options)
 	char str[] = "ERROR";
 	int32_t ret = -1;
 	int8_t is_tcp = 0, is_unix = 0, is_ibsdp = 0, is_msocket = 0;
-	volume_opt_list_t *vol_opt = NULL;
 
 	LZ_VALIDATE_OR_GOTO("transport", options, fail);
   
@@ -63,13 +61,13 @@ transport_load (dict_t *options)
                     "setting transport-type failed");
 	}
 
-    trans->ops = epoll_ops;
+    trans->ops = &epoll_ops;
 
     trans->init = socket_init;
 
     trans->fini = socket_fini;
 	
-	ret = trans->init (trans, options);
+	ret = trans->init (trans);
 	if (ret != 0) {
 		lz_log ("transport", LZ_LOG_ERROR,
 			"'%s' initialization failed", type);
@@ -219,7 +217,7 @@ transport_receive (transport_t *this, char **hdr_p, size_t *hdrlen_p,
 	int32_t ret = -1;
 
 	LZ_VALIDATE_OR_GOTO("transport", this, fail);
-
+/*
         if (this->peer_trans) {
                 *hdr_p = this->handover.msg->hdr;
                 *hdrlen_p = this->handover.msg->hdrlen;
@@ -227,7 +225,7 @@ transport_receive (transport_t *this, char **hdr_p, size_t *hdrlen_p,
 
                 return 0;
         }
-
+*/
 	ret = this->ops->receive (this, hdr_p, hdrlen_p, iobuf_p);
 fail:
 	return ret;
@@ -249,7 +247,7 @@ transport_unref (transport_t *this)
 	pthread_mutex_unlock (&this->lock);
 
 	if (refcount == 0) {
-		xlator_notify (this->xl, LZ_EVENT_TRANSPORT_CLEANUP, this);
+//		xlator_notify (this->xl, LZ_EVENT_TRANSPORT_CLEANUP, this);
 		transport_destroy (this);
 	}
 	

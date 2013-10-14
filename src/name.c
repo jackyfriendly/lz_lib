@@ -71,13 +71,13 @@ static int32_t
 af_unix_client_bind (transport_t *this, 
                      struct sockaddr *sockaddr, 
                      socklen_t sockaddr_len, 
-                     int sock, dict_t *options)
+                     int sock)
 {
         data_t *path_data = NULL;
         struct sockaddr_un *addr = NULL;
         int32_t ret = 0;
 
-        path_data = dict_get (options, "transport.socket.bind-path");
+        path_data = dict_get (this->globals_ctx->options, "transport.socket.bind-path");
         if (path_data) {
                 char *path = data_to_str (path_data);
                 if (!path || strlen (path) > UNIX_PATH_MAX) {
@@ -402,10 +402,8 @@ out:
 }
 
 int32_t 
-client_bind (transport_t *this, 
-             struct sockaddr *sockaddr, 
-             socklen_t *sockaddr_len, 
-             int sock, dict_t *options)
+client_bind (transport_t *this, struct sockaddr *sockaddr, 
+             socklen_t *sockaddr_len, int sock)
 {
         int ret = 0;
 
@@ -430,7 +428,7 @@ client_bind (transport_t *this,
         case AF_UNIX:
                 *sockaddr_len = sizeof (struct sockaddr_un);
                 ret = af_unix_client_bind (this, (struct sockaddr *)sockaddr, 
-                                           *sockaddr_len, sock, options);
+                                           *sockaddr_len, sock);
                 break;
 
         default:
@@ -447,7 +445,7 @@ int32_t
 socket_client_get_remote_sockaddr (transport_t *this,
                                    struct sockaddr *sockaddr, 
                                    socklen_t *sockaddr_len,
-                                   sa_family_t *sa_family, dict_t *options)
+                                   sa_family_t *sa_family)
 {
         int32_t ret = 0;
 
@@ -458,7 +456,7 @@ socket_client_get_remote_sockaddr (transport_t *this,
         }
 
 
-        ret = client_fill_address_family (this, &sockaddr->sa_family, options);
+        ret = client_fill_address_family (this, &sockaddr->sa_family, this->globals_ctx->options);
         if (ret) {
                 ret = -1;
                 goto err;
@@ -475,12 +473,12 @@ socket_client_get_remote_sockaddr (transport_t *this,
         case AF_INET6:
         case AF_UNSPEC:
                 ret = af_inet_client_get_remote_sockaddr (this, sockaddr,
-                                                          sockaddr_len, options);
+                                                          sockaddr_len, this->globals_ctx->options);
                 break;
 
         case AF_UNIX:
                 ret = af_unix_client_get_remote_sockaddr (this, sockaddr,
-                                                          sockaddr_len, options);
+                                                          sockaddr_len, this->globals_ctx->options);
                 break;
 
         default:
@@ -499,7 +497,7 @@ err:
 
 
 int32_t
-server_fill_address_family (transport_t *this, sa_family_t *sa_family, dict_t *options)
+server_fill_address_family (transport_t *this, sa_family_t *sa_family)
 {
         data_t  *address_family_data = NULL;
         int32_t  ret                 = -1;
@@ -508,7 +506,7 @@ server_fill_address_family (transport_t *this, sa_family_t *sa_family, dict_t *o
                 goto out;
         }
 
-        address_family_data = dict_get (options, 
+        address_family_data = dict_get (this->globals_ctx->options, 
                                         "transport.address-family");
         if (address_family_data) {
                 char *address_family = NULL;
@@ -544,7 +542,7 @@ out:
 
 int32_t
 socket_server_get_local_sockaddr (transport_t *this, struct sockaddr *addr, 
-                                  socklen_t *addr_len, sa_family_t *sa_family, dict_t *options)
+                                  socklen_t *addr_len, sa_family_t *sa_family)
 {
         int32_t ret = -1;
 
@@ -552,7 +550,7 @@ socket_server_get_local_sockaddr (transport_t *this, struct sockaddr *addr,
                 goto err;
         }
 
-        ret = server_fill_address_family (this, &addr->sa_family, options);
+        ret = server_fill_address_family (this, &addr->sa_family);
         if (ret == -1) {
                 goto err;
         }
@@ -567,11 +565,11 @@ socket_server_get_local_sockaddr (transport_t *this, struct sockaddr *addr,
         case AF_INET:
         case AF_INET6:
         case AF_UNSPEC:
-                ret = af_inet_server_get_local_sockaddr (this, addr, addr_len, options);
+                ret = af_inet_server_get_local_sockaddr (this, addr, addr_len, this->globals_ctx->options);
                 break;
 
         case AF_UNIX:
-                ret = af_unix_server_get_local_sockaddr (this, addr, addr_len, options);
+                ret = af_unix_server_get_local_sockaddr (this, addr, addr_len, this->globals_ctx->options);
                 break;
         }
 

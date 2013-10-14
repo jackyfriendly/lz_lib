@@ -9,7 +9,7 @@
 #define TS(tv) ((((unsigned long long) tv.tv_sec) * 1000000) + (tv.tv_usec))
 
 lz_timer_t *
-lz_timer_call_after (lz_timer_registry *timer, struct timeval delta,
+lz_timer_call_after (lz_timer_registry_t *timer, struct timeval delta,
                      lz_timer_cbk_t cbk, void *data)
 {
     lz_timer_registry_t *reg = NULL;
@@ -76,7 +76,7 @@ lz_timer_call_stale (lz_timer_registry_t *reg,
 }
 
 int32_t
-lz_timer_call_cancel (lz_timer_registry *timer,
+lz_timer_call_cancel (lz_timer_registry_t *timer,
                       lz_timer_t *event)
 {
     lz_timer_registry_t *reg = NULL;
@@ -155,7 +155,6 @@ lz_timer_proc (void *ctx)
     }
     pthread_mutex_unlock (&reg->lock);
     pthread_mutex_destroy (&reg->lock);
-    FREE (((glusterfs_ctx_t *)ctx)->timer);
 
     return NULL;
 }

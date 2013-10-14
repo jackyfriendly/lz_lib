@@ -12,7 +12,7 @@
 #include <stdlib.h>
 #include "list.h"
 #include "logging.h"
-
+#include "mem-pool.h"
 static pthread_mutex_t  logfile_mutex;
 static char            *filename = NULL;
 static uint8_t          logrotate = 0;
@@ -281,7 +281,7 @@ __logfile_for_client (char *identifier)
         struct _client_log *client = NULL;
 
         if (!client_logs) {
-                client = CALLOC (1, sizeof (*client));
+                client = (struct _client_log*)CALLOC (1, sizeof (*client));
                 client_log_init (client, identifier);
 
                 client_logs = client;
@@ -293,7 +293,7 @@ __logfile_for_client (char *identifier)
         }
 
         if (!client) {
-                client = CALLOC (1, sizeof (*client));
+                client = (struct _client_log*)CALLOC (1, sizeof (*client));
 
                 client_log_init (client, identifier);
 

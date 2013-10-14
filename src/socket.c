@@ -239,7 +239,7 @@ __socket_connect_finish (int fd)
 
 
 void
-__socket_reset (transport_t *this, struct event_pool *event_pool)
+__socket_reset (transport_t *this)
 {
     socket_private_t *priv = NULL;
 
@@ -255,7 +255,7 @@ __socket_reset (transport_t *this, struct event_pool *event_pool)
 
     memset (&priv->incoming, 0, sizeof (priv->incoming));
 
-    event_unregister (event_pool, priv->sock, priv->idx);
+    event_unregister (this->globals_ctx->event_pool, priv->sock, priv->idx);
     close (priv->sock);
     priv->sock = -1;
     priv->idx = -1;
@@ -365,7 +365,7 @@ __socket_ioq_churn_entry (transport_t *this, struct ioq *entry)
 
 
 int
-__socket_ioq_churn (transport_t *this, struct event_pool *event_pool)
+__socket_ioq_churn (transport_t *this)
 {
     socket_private_t *priv = NULL;
     int               ret = 0;
@@ -385,7 +385,7 @@ __socket_ioq_churn (transport_t *this, struct event_pool *event_pool)
 
     if (list_empty (&priv->ioq)) {
         /* all pending writes done, not interested in POLLOUT */
-        priv->idx = event_select_on (event_pool,
+        priv->idx = event_select_on (this->globals_ctx->event_pool,
                 priv->sock, priv->idx, -1, 0);
     }
 
@@ -394,7 +394,7 @@ __socket_ioq_churn (transport_t *this, struct event_pool *event_pool)
 
 
 int
-socket_event_poll_err (transport_t *this, struct event_pool *event_pool)
+socket_event_poll_err (transport_t *this)
 {
     socket_private_t *priv = NULL;
     int               ret = -1;
@@ -404,7 +404,7 @@ socket_event_poll_err (transport_t *this, struct event_pool *event_pool)
     pthread_mutex_lock (&priv->lock);
     {
         __socket_ioq_flush (this);
-        __socket_reset (this, event_pool);
+        __socket_reset (this);
     }
     pthread_mutex_unlock (&priv->lock);
 //todo: notify this
@@ -415,7 +415,7 @@ socket_event_poll_err (transport_t *this, struct event_pool *event_pool)
 
 
 int
-socket_event_poll_out (transport_t *this, struct event_pool *event_pool)
+socket_event_poll_out (transport_t *this)
 {
     socket_private_t *priv = NULL;
     int               ret = -1;
@@ -425,7 +425,7 @@ socket_event_poll_out (transport_t *this, struct event_pool *event_pool)
     pthread_mutex_lock (&priv->lock);
     {
         if (priv->connected == 1) {
-            ret = __socket_ioq_churn (this, event_pool);
+            ret = __socket_ioq_churn (this);
 
             if (ret == -1) {
                 __socket_disconnect (this);
@@ -700,10 +700,11 @@ socket_event_poll_in (transport_t *this)
 
     /* call POLLIN on xlator even if complete block is not received,
        just to keep the last_received timestamp ticking */
-//todo:
+//todo: notify 
+/*
     if (ret == 0)
         ret = xlator_notify (this->xl, LZ_EVENT_POLLIN, this);
-
+*/
     return ret;
 }
 
@@ -762,16 +763,17 @@ socket_connect_finish (transport_t *this)
 
             priv->connected = 1;
             priv->connect_finish_log = 0;
-            event = LZ_EVENT_CHILD_UP;
+//            event = LZ_EVENT_CHILD_UP;
             get_transport_identifiers (this);
         }
     }
 unlock:
     pthread_mutex_unlock (&priv->lock);
-
+//todo: notify this
+/*
     if (notify_xlator)
         xlator_notify (this->xl, event, this);
-
+*/
     return 0;
 }
 
@@ -826,11 +828,11 @@ socket_server_event_handler (int fd, int idx, void *data,
     struct sockaddr_storage  new_sockaddr = {0, };
     socklen_t                addrlen = sizeof (new_sockaddr);
     socket_private_t        *new_priv = NULL;
-    glusterfs_ctx_t         *ctx = NULL;
+    globals_ctx_t           *ctx = NULL;
 
     this = data;
     priv = this->private;
-    ctx  = this->xl->ctx;
+    ctx  = this->globals_ctx;
 
     pthread_mutex_lock (&priv->lock);
     {
@@ -866,7 +868,7 @@ socket_server_event_handler (int fd, int idx, void *data,
             }
 
             new_trans = CALLOC (1, sizeof (*new_trans));
-            new_trans->xl = this->xl;
+//            new_trans->xl = this->xl;
             new_trans->fini = this->fini;
 
             memcpy (&new_trans->peerinfo.sockaddr, &new_sockaddr,
@@ -946,11 +948,11 @@ socket_connect (transport_t *this)
     socket_private_t        *priv = NULL;
     struct sockaddr_storage  sockaddr = {0, };
     socklen_t                sockaddr_len = 0;
-    glusterfs_ctx_t         *ctx = NULL;
+    globals_ctx_t           *ctx = NULL;
     sa_family_t              sa_family = {0, };
 
     priv = this->private;
-    ctx = this->xl->ctx;
+    ctx = this->globals_ctx;
 
     if (!priv) {
         lz_log (__func__, LZ_LOG_DEBUG,
@@ -1092,12 +1094,12 @@ socket_listen (transport_t *this)
     struct sockaddr_storage  sockaddr;
     socklen_t                sockaddr_len;
     peer_info_t             *myinfo = NULL;
-    glusterfs_ctx_t         *ctx = NULL;
+    globals_ctx_t           *ctx = NULL;
     sa_family_t              sa_family = {0, };
 
     priv   = this->private;
     myinfo = &this->myinfo;
-    ctx    = this->xl->ctx;
+    ctx    = this->globals_ctx;
 
     pthread_mutex_lock (&priv->lock);
     {
@@ -1276,10 +1278,10 @@ socket_submit (transport_t *this, char *buf, int len,
     char              need_poll_out = 0;
     char              need_append = 1;
     struct ioq       *entry = NULL;
-    glusterfs_ctx_t  *ctx = NULL;
+    globals_ctx_t  *ctx = NULL;
 
     priv = this->private;
-    ctx  = this->xl->ctx;
+    ctx  = this->globals_ctx;
 
     pthread_mutex_lock (&priv->lock);
     {
@@ -1329,8 +1331,8 @@ int
 socket_init (transport_t *this)
 {
     socket_private_t *priv = NULL;
-    boolean_t      tmp_bool = 0;
-    uint64_t          windowsize = LZ_DEFAULT_SOCKET_WINDOW_SIZE;
+    lz_boolean_t      tmp_bool = 0;
+    uint64_t          windowsize = DEFAULT_SOCKET_WINDOW_SIZE;
     char             *optstr = NULL;
 
     if (this->private) {
@@ -1355,8 +1357,8 @@ socket_init (transport_t *this)
 
     INIT_LIST_HEAD (&priv->ioq);
 
-    if (dict_get (this->xl->options, "non-blocking-io")) {
-        optstr = data_to_str (dict_get (this->xl->options,
+    if (dict_get (this->globals_ctx->options, "non-blocking-io")) {
+        optstr = data_to_str (dict_get (this->globals_ctx->options,
                     "non-blocking-io"));
 
         if (string2boolean (optstr, &tmp_bool) == -1) {
@@ -1377,8 +1379,8 @@ socket_init (transport_t *this)
 
     // By default, we enable NODELAY
     priv->nodelay = 1;
-    if (dict_get (this->xl->options, "transport.socket.nodelay")) {
-        optstr = data_to_str (dict_get (this->xl->options,
+    if (dict_get (this->globals_ctx->options, "transport.socket.nodelay")) {
+        optstr = data_to_str (dict_get (this->globals_ctx->options,
                     "transport.socket.nodelay"));
 
         if (string2boolean (optstr, &tmp_bool) == -1) {
@@ -1396,7 +1398,7 @@ socket_init (transport_t *this)
 
 
     optstr = NULL;
-    if (dict_get_str (this->xl->options, "transport.window-size",
+    if (dict_get_str (this->globals_ctx->options, "transport.window-size",
                 &optstr) == 0) {
         if (string2bytesize (optstr, &windowsize) != 0) {
             lz_log (__func__, LZ_LOG_ERROR,
@@ -1407,7 +1409,7 @@ socket_init (transport_t *this)
 
     optstr = NULL;
 
-    if (dict_get_str (this->xl->options, "transport.socket.lowlat",
+    if (dict_get_str (this->globals_ctx->options, "transport.socket.lowlat",
                 &optstr) == 0) {
         priv->lowlat = 1;
     }

@@ -28,9 +28,9 @@
  * setsockopt will fail. Having larger values might be beneficial for
  * IB links.
  */
-#define DEFAULT_SOCKET_WINDOW_SIZE   (512 * UNIT_KB)
-#define MAX_SOCKET_WINDOW_SIZE       (1 * UNIT_MB)
-#define MIN_SOCKET_WINDOW_SIZE       (128 * UNIT_KB)
+#define DEFAULT_SOCKET_WINDOW_SIZE   (512 * LZ_UNIT_KB)
+#define MAX_SOCKET_WINDOW_SIZE       (1 * LZ_UNIT_MB)
+#define MIN_SOCKET_WINDOW_SIZE       (128 * LZ_UNIT_KB)
 
 typedef enum {
     SOCKET_PROTO_STATE_NADA = 0,
@@ -100,16 +100,16 @@ typedef struct {
     char                   nodelay;
 } socket_private_t;
 
-int socket_connect (transport_t *this);
+int32_t socket_connect (transport_t *this);
 
-int socket_listen (transport_t *this);
+int32_t socket_listen (transport_t *this);
 
-int socket_disconnect (transport_t *this);
+int32_t socket_disconnect (transport_t *this);
 
-int socket_submit (transport_t *this, char *buf, int len, \
+int32_t socket_submit (transport_t *this, char *buf, int len, \
         struct iovec *vector, int count, struct iobref *iobref);
 
-int socket_receive (transport_t *this, char **hdr_p, size_t *hdrlen_p, \
+int32_t socket_receive (transport_t *this, char **hdr_p, size_t *hdrlen_p, \
         struct iobuf **iobuf_p);
 
 void socket_fini (transport_t *this);

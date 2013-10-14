@@ -10,6 +10,8 @@
 #include "common-utils.h"
 #include "dict.h"
 #include "iobuf.h"
+#include "globals.h"
+
 struct transport_ops;
 typedef struct transport transport_t;
 
@@ -34,10 +36,11 @@ struct transport {
     pthread_mutex_t        lock;
     int32_t                refcount;
     struct iobuf_pool      *iobuf_pool;
+    globals_ctx_t          *globals_ctx;
 //    xlator_t              *xl;
     void                  *dnscache;
     data_t                *buf;
-    int32_t              (*init)   (transport_t *this, dict_t *options);
+    int32_t              (*init)   (transport_t *this);
     void                 (*fini)   (transport_t *this);
     /*  int                  (*notify) (transport_t *this, int event, void *data); */
     peer_info_t     peerinfo;
@@ -77,7 +80,7 @@ int32_t transport_receive    (transport_t *this, char **hdr_p, size_t *hdrlen_p,
                               struct iobuf **iobuf_p);
 int32_t transport_destroy    (transport_t *this);
 
-transport_t *transport_load  (dict_t *options);
+transport_t *transport_load  (dict_t *options, globals_ctx_t *ctx);
 transport_t *transport_ref   (transport_t *trans);
 int32_t      transport_unref (transport_t *trans);
 
